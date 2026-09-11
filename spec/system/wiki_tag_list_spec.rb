@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe "Wiki tag list", system: true do
+RSpec.describe "Wiki tag list" do
   let!(:component) { upload_theme_or_component }
 
   fab!(:wiki_tag) { Fabricate(:tag, name: "wiki") }
@@ -9,24 +9,42 @@ RSpec.describe "Wiki tag list", system: true do
 
   # Titles are chosen so that alphabetical order differs from the bumped_at
   # order the endpoint returns, and so that a plain sort would put the
-  # accented title after Z instead of between A and Z.
+  # accented title after Z instead of between A and Z. They also have to
+  # clear Discourse's 15 character minimum title length.
   fab!(:zebra) do
-    Fabricate(:topic, title: "Zebra care", category: other_category, tags: [wiki_tag])
+    Fabricate(:topic, title: "Zebra care essentials", category: other_category, tags: [wiki_tag])
   end
 
   fab!(:elan) do
-    Fabricate(:topic, title: "Élan basics", category: other_category, tags: [wiki_tag])
+    Fabricate(
+      :topic,
+      title: "Élan basics for beginners",
+      category: other_category,
+      tags: [wiki_tag],
+    )
   end
 
   fab!(:apple) do
-    Fabricate(:topic, title: "Apple basics", category: other_category, tags: [wiki_tag])
+    Fabricate(
+      :topic,
+      title: "Apple basics for gardeners",
+      category: other_category,
+      tags: [wiki_tag],
+    )
   end
 
   fab!(:already_in_target) do
-    Fabricate(:topic, title: "Already in Docs", category: target_category, tags: [wiki_tag])
+    Fabricate(
+      :topic,
+      title: "Already inside the Docs category",
+      category: target_category,
+      tags: [wiki_tag],
+    )
   end
 
-  fab!(:untagged) { Fabricate(:topic, title: "Not tagged at all", category: other_category) }
+  fab!(:untagged) do
+    Fabricate(:topic, title: "Not tagged at all anywhere", category: other_category)
+  end
 
   before do
     SiteSetting.tagging_enabled = true
@@ -47,21 +65,23 @@ RSpec.describe "Wiki tag list", system: true do
     visit target_category_path
 
     expect(page).to have_css(".wiki-tag-list")
-    expect(listed_titles).to eq(["Apple basics", "Élan basics", "Zebra care"])
+    expect(listed_titles).to eq(
+      ["Apple basics for gardeners", "Élan basics for beginners", "Zebra care essentials"],
+    )
   end
 
   it "excludes topics that are already in the target category" do
     visit target_category_path
 
     expect(page).to have_css(".wiki-tag-list")
-    expect(listed_titles).not_to include("Already in Docs")
+    expect(listed_titles).not_to include("Already inside the Docs category")
   end
 
   it "excludes topics without the tag" do
     visit target_category_path
 
     expect(page).to have_css(".wiki-tag-list")
-    expect(listed_titles).not_to include("Not tagged at all")
+    expect(listed_titles).not_to include("Not tagged at all anywhere")
   end
 
   it "renders one heading and a single list" do

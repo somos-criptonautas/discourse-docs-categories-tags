@@ -1,0 +1,40 @@
+// discovery-list-container-top wraps connectors in a <span>
+.wiki-tag-list,
+.wiki-tag-list__skeleton {
+  display: block;
+  margin-bottom: var(--space-6);
+}
+
+.wiki-tag-list {
+  &__heading {
+    font-size: var(--font-up-2);
+    margin: 0 0 var(--space-2);
+  }
+
+  &__items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--primary-low);
+  }
+
+  &__item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-3) var(--space-2);
+    border-bottom: 1px solid var(--primary-low);
+  }
+
+  &__title {
+    font-size: var(--d-topic-list-title-font-size);
+    overflow-wrap: anywhere;
+  }
+
+  &__skeleton {
+    height: 12rem;
+    border-radius: var(--d-border-radius);
+    background: var(--primary-very-low);
+  }
+}

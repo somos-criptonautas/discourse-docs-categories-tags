@@ -1,0 +1,24 @@
+tag_name:
+  type: list
+  list_type: tag
+  default: "wiki"
+  description: "Tag whose topics are listed. Only the first tag is used."
+
+target_category:
+  type: list
+  list_type: category
+  default: ""
+  description: "Category page that shows the list. Only the first category is used."
+
+section_heading:
+  type: string
+  default: "Wiki"
+  description: "Heading shown above the list."
+
+placement:
+  type: enum
+  default: above
+  choices:
+    - above
+    - below
+  description: "Show the list above or below the category's native topic list."

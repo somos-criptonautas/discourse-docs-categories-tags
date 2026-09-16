@@ -1,0 +1,6 @@
+// On the target category the tag is what pulled these topics in, so the
+// pill repeats what the page already is. It stays visible everywhere else,
+// and other tags on these topics are untouched.
+.docs-categories-tags-list .discourse-tag[data-tag-name="#{$tag-name}"] {
+  display: none;
+}

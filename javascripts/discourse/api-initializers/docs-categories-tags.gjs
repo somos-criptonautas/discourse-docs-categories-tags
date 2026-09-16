@@ -1,6 +1,7 @@
 import Component from "@glimmer/component";
 import { service } from "@ember/service";
 import { apiInitializer } from "discourse/lib/api";
+import Category from "discourse/models/category";
 
 // Runaway guard. 20 pages x 30 topics is far more than the expected volume.
 const MAX_PAGES = 20;
@@ -142,6 +143,46 @@ export default apiInitializer((api) => {
       {{/if}}
     </template>
   );
+
+  // Marks the list so the stylesheet can hide the tag pill that put these
+  // topics here. Other tags stay visible.
+  api.registerValueTransformer("topic-list-class", ({ value, context }) => {
+    if (context.category?.id === categoryId) {
+      value.push("docs-categories-tags-list");
+    }
+    return value;
+  });
+
+  // The category page now holds everything carrying the tag, so send the
+  // tag's own page there. Only this tag, and only its listing routes:
+  // tag.edit and tag/category intersections are left alone. The component
+  // fetches its data through the store, not the router, so this does not
+  // interfere with it.
+  const router = api.container.lookup("service:router");
+
+  router.on("routeWillChange", (transition) => {
+    const name = transition.to?.name;
+
+    if (name !== "tag.legacyRedirect" && !name?.startsWith("tag.show")) {
+      return;
+    }
+
+    const params = transition.to.params ?? {};
+    const target = (params.tag_slug || params.tag_name || "").toLowerCase();
+
+    if (target !== tag.toLowerCase()) {
+      return;
+    }
+
+    // Not in the store when categories are lazy loaded; leave the tag page.
+    const category = Category.findById(categoryId);
+    if (!category) {
+      return;
+    }
+
+    transition.abort();
+    router.replaceWith(category.url);
+  });
 
   api.registerValueTransformer(
     "topic-list-item-class",

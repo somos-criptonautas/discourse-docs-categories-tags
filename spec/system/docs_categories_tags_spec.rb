@@ -141,4 +141,33 @@ RSpec.describe "discourse-docs-categories-tags" do
     expect(page).to have_no_css(".topic-list-item.docs-categories-tags-topic")
     expect(listed_titles).not_to include("Wiki topic bumped in the middle")
   end
+
+  it "hides the tag pill on that list only" do
+    visit target_category_path
+    expect(page).to have_css(".topic-list-item.docs-categories-tags-topic")
+    expect(page).to have_no_css(
+      ".topic-list .discourse-tag[data-tag-name='wiki']",
+    )
+
+    # Still meaningful everywhere else.
+    visit "/c/#{other_category.slug}/#{other_category.id}"
+    expect(page).to have_css(".discourse-tag[data-tag-name='wiki']")
+  end
+
+  it "redirects the tag's own page to the category" do
+    visit "/tag/wiki"
+
+    expect(page).to have_current_path(target_category_path, ignore_query: true)
+    expect(page).to have_css(".topic-list-item.docs-categories-tags-topic")
+  end
+
+  it "leaves other tags alone" do
+    Fabricate(:tag, name: "handbook")
+
+    visit "/tag/handbook"
+
+    # Discourse canonicalises this to /tag/handbook/<id> on its own; what
+    # matters is that it stays on the tag page.
+    expect(page).to have_current_path(%r{/tag/handbook}, ignore_query: true)
+  end
 end

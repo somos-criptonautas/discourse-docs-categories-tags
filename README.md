@@ -31,8 +31,15 @@ use it.
 - Topics already in the target category are skipped, so nothing appears
   twice, and the category's pinned topics stay pinned to the top.
 - Source category badges are turned back on, since the list no longer holds
-  a single category. Injected rows also get a `docs-categories-tags-topic` class for
-  styling.
+  a single category. Injected rows also get a `docs-categories-tags-topic`
+  class for styling.
+- The tag pill is hidden on that category's list, where it only repeats what
+  the page already is. It stays visible on topic pages and every other
+  listing, and other tags on those topics are untouched.
+- The tag's own page (`/tag/<tag>`) redirects to the category, since the
+  category now holds everything carrying the tag. Only that tag's listing
+  routes redirect: tag editing and `/tags/c/...` intersections are left
+  alone.
 - Runs **only** on the target category. The outlet fires on every discovery
   page, so the component checks the current category ID and also skips
   tag/category intersection pages such as `/tags/c/docs/other-tag`.
@@ -48,6 +55,24 @@ Topics are merged through the `discovery-above` plugin outlet, which
 receives the route's model. That avoids overriding the fifteen-odd category
 route classes (`category`, `categoryNone`, `latestCategory`, `topCategory`
 and friends), at the cost of mutating the topic list the outlet hands over.
+
+### The tag redirect
+
+The redirect is client side, in the component. Discourse's own Permalinks
+cannot do this: they are a catch-all route registered last, so they only fire
+for URLs that match nothing else, and `/tag/<tag>` matches the real tag route
+first.
+
+That means in-app tag clicks never render the tag page, but a direct or
+external hit loads it briefly before bouncing, and crawlers do not follow it.
+For a real 301, redirect at the reverse proxy **and exclude the JSON**, which
+this component fetches for its own data:
+
+```nginx
+location = /tag/wiki { return 301 /c/docs/4; }
+location ~ ^/tag/wiki/l/[a-z]+$ { return 301 /c/docs/4; }
+# /tag/wiki/l/latest.json must NOT be redirected.
+```
 
 ### Known limits
 

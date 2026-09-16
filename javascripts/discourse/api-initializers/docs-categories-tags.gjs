@@ -61,7 +61,7 @@ function sortTopics(topics, filter) {
 
 // Renders nothing. It exists to reach the topic list through the outlet's
 // model, which is a public API, rather than overriding the category routes.
-class WikiTagInjector extends Component {
+class DocsCategoriesTagsInjector extends Component {
   @service store;
 
   constructor() {
@@ -73,10 +73,10 @@ class WikiTagInjector extends Component {
     const list = this.args.model?.list;
 
     // A list is reused when returning to a cached page; only merge once.
-    if (!list || list.wikiTagListMerged) {
+    if (!list || list.docsCategoriesTagsMerged) {
       return;
     }
-    list.wikiTagListMerged = true;
+    list.docsCategoriesTagsMerged = true;
 
     const filter = this.args.model.filterType || "latest";
 
@@ -134,7 +134,7 @@ export default apiInitializer((api) => {
     "discovery-above",
     <template>
       {{#if (isTarget @outletArgs)}}
-        <WikiTagInjector
+        <DocsCategoriesTagsInjector
           @model={{@outletArgs.model}}
           @tag={{tag}}
           @categoryId={{categoryId}}
@@ -150,7 +150,7 @@ export default apiInitializer((api) => {
         context.category?.id === categoryId &&
         injectedIds.has(context.topic.id)
       ) {
-        value.push("wiki-tag-topic");
+        value.push("docs-categories-tags-topic");
       }
       return value;
     }

@@ -1,4 +1,4 @@
-# Wiki Tag List
+# discourse-docs-categories-tags
 
 Mixes every topic carrying a given tag (default: `wiki`) into the topic list
 of one specific category, so they appear as ordinary rows alongside the
@@ -31,7 +31,7 @@ use it.
 - Topics already in the target category are skipped, so nothing appears
   twice, and the category's pinned topics stay pinned to the top.
 - Source category badges are turned back on, since the list no longer holds
-  a single category. Injected rows also get a `wiki-tag-topic` class for
+  a single category. Injected rows also get a `docs-categories-tags-topic` class for
   styling.
 - Runs **only** on the target category. The outlet fires on every discovery
   page, so the component checks the current category ID and also skips
@@ -69,7 +69,7 @@ pnpm lint
 
 CI runs Discourse's shared theme workflow, which lints and runs the theme
 tests. `spec/system/core_features_spec.rb` checks that core features still
-work with the component installed; `spec/system/wiki_tag_list_spec.rb`
+work with the component installed; `spec/system/docs_categories_tags_spec.rb`
 covers the merge, the ordering, the category guard and the de-duplication.
 
 System tests run against a real Discourse via the

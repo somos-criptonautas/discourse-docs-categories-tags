@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe "Wiki tag list" do
+RSpec.describe "discourse-docs-categories-tags" do
   let!(:component) { upload_theme_or_component }
 
   fab!(:wiki_tag) { Fabricate(:tag, name: "wiki") }
@@ -85,7 +85,7 @@ RSpec.describe "Wiki tag list" do
   it "mixes the tagged topics into the category's own topic list" do
     visit target_category_path
 
-    expect(page).to have_css(".topic-list-item.wiki-tag-topic", count: 2)
+    expect(page).to have_css(".topic-list-item.docs-categories-tags-topic", count: 2)
     expect(listed_titles).to eq(
       [
         "Docs topic bumped most recently",
@@ -100,7 +100,10 @@ RSpec.describe "Wiki tag list" do
   it "shows the source category on the topics it pulled in" do
     visit target_category_path
 
-    expect(page).to have_css(".topic-list-item.wiki-tag-topic .badge-category", text: "Guides")
+    expect(page).to have_css(
+      ".topic-list-item.docs-categories-tags-topic .badge-category",
+      text: "Guides",
+    )
   end
 
   it "does not duplicate a tagged topic that already lives in the category" do
@@ -113,19 +116,19 @@ RSpec.describe "Wiki tag list" do
   it "leaves untagged topics from other categories out" do
     visit target_category_path
 
-    expect(page).to have_css(".topic-list-item.wiki-tag-topic")
+    expect(page).to have_css(".topic-list-item.docs-categories-tags-topic")
     expect(listed_titles).not_to include("Untagged topic somewhere else")
   end
 
   it "does not touch other discovery pages" do
     visit "/c/#{other_category.slug}/#{other_category.id}"
     expect(page).to have_css(".topic-list-item")
-    expect(page).to have_no_css(".topic-list-item.wiki-tag-topic")
+    expect(page).to have_no_css(".topic-list-item.docs-categories-tags-topic")
     expect(listed_titles).not_to include("Docs topic bumped most recently")
 
     visit "/latest"
     expect(page).to have_css(".topic-list-item")
-    expect(page).to have_no_css(".topic-list-item.wiki-tag-topic")
+    expect(page).to have_no_css(".topic-list-item.docs-categories-tags-topic")
   end
 
   it "does nothing when no target category is set" do
@@ -135,7 +138,7 @@ RSpec.describe "Wiki tag list" do
     visit target_category_path
 
     expect(page).to have_css(".topic-list-item")
-    expect(page).to have_no_css(".topic-list-item.wiki-tag-topic")
+    expect(page).to have_no_css(".topic-list-item.docs-categories-tags-topic")
     expect(listed_titles).not_to include("Wiki topic bumped in the middle")
   end
 end

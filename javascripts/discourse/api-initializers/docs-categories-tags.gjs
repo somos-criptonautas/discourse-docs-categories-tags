@@ -1,6 +1,7 @@
 import Component from "@glimmer/component";
 import { service } from "@ember/service";
 import { apiInitializer } from "discourse/lib/api";
+import PreloadStore from "discourse/lib/preload-store";
 import Category from "discourse/models/category";
 
 // Runaway guard. 20 pages x 30 topics is far more than the expected volume.
@@ -181,6 +182,13 @@ export default apiInitializer((api) => {
     }
 
     transition.abort();
+
+    // On a direct hit the server preloaded the tag page's topic list, and
+    // the category route would otherwise pick it up: the preload is matched
+    // on the filter mode alone ("latest"), not the path. Core drops it the
+    // same way when it redirects away from a preloaded list.
+    PreloadStore.getAndRemove("topic_list");
+
     router.replaceWith(category.url);
   });
 

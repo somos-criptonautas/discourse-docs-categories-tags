@@ -145,9 +145,7 @@ RSpec.describe "discourse-docs-categories-tags" do
   it "hides the tag pill on that list only" do
     visit target_category_path
     expect(page).to have_css(".topic-list-item.docs-categories-tags-topic")
-    expect(page).to have_no_css(
-      ".topic-list .discourse-tag[data-tag-name='wiki']",
-    )
+    expect(page).to have_no_css(".topic-list .discourse-tag[data-tag-name='wiki']")
 
     # Still meaningful everywhere else.
     visit "/c/#{other_category.slug}/#{other_category.id}"

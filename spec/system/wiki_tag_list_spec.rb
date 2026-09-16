@@ -7,43 +7,64 @@ RSpec.describe "Wiki tag list" do
   fab!(:target_category) { Fabricate(:category, name: "Docs") }
   fab!(:other_category) { Fabricate(:category, name: "Guides") }
 
-  # Titles are chosen so that alphabetical order differs from the bumped_at
-  # order the endpoint returns, and so that a plain sort would put the
-  # accented title after Z instead of between A and Z. They also have to
-  # clear Discourse's 15 character minimum title length.
-  fab!(:zebra) do
-    Fabricate(:topic, title: "Zebra care essentials", category: other_category, tags: [wiki_tag])
-  end
-
-  fab!(:elan) do
+  # bumped_at is set explicitly so the expected merged order is unambiguous:
+  # the tagged topics from Guides have to land between the Docs topics.
+  # Titles have to clear Discourse's 15 character minimum.
+  fab!(:docs_recent) do
     Fabricate(
       :topic,
-      title: "Élan basics for beginners",
-      category: other_category,
-      tags: [wiki_tag],
+      title: "Docs topic bumped most recently",
+      category: target_category,
+      bumped_at: 1.hour.ago,
     )
   end
 
-  fab!(:apple) do
+  fab!(:wiki_middle) do
     Fabricate(
       :topic,
-      title: "Apple basics for gardeners",
+      title: "Wiki topic bumped in the middle",
       category: other_category,
       tags: [wiki_tag],
+      bumped_at: 1.day.ago,
     )
   end
 
-  fab!(:already_in_target) do
+  fab!(:docs_older) do
     Fabricate(
       :topic,
-      title: "Already inside the Docs category",
+      title: "Docs topic bumped a while back",
+      category: target_category,
+      bumped_at: 2.days.ago,
+    )
+  end
+
+  fab!(:wiki_oldest) do
+    Fabricate(
+      :topic,
+      title: "Wiki topic bumped longest ago",
+      category: other_category,
+      tags: [wiki_tag],
+      bumped_at: 3.days.ago,
+    )
+  end
+
+  fab!(:wiki_already_in_target) do
+    Fabricate(
+      :topic,
+      title: "Wiki topic already inside Docs",
       category: target_category,
       tags: [wiki_tag],
+      bumped_at: 4.days.ago,
     )
   end
 
-  fab!(:untagged) do
-    Fabricate(:topic, title: "Not tagged at all anywhere", category: other_category)
+  fab!(:untagged_elsewhere) do
+    Fabricate(
+      :topic,
+      title: "Untagged topic somewhere else",
+      category: other_category,
+      bumped_at: 5.minutes.ago,
+    )
   end
 
   before do
@@ -58,60 +79,63 @@ RSpec.describe "Wiki tag list" do
   end
 
   def listed_titles
-    page.all(".wiki-tag-list__title").map(&:text)
+    page.all(".topic-list-body .topic-list-item .raw-topic-link").map(&:text)
   end
 
-  it "lists the tagged topics alphabetically, accents included" do
+  it "mixes the tagged topics into the category's own topic list" do
     visit target_category_path
 
-    expect(page).to have_css(".wiki-tag-list")
+    expect(page).to have_css(".topic-list-item.wiki-tag-topic", count: 2)
     expect(listed_titles).to eq(
-      ["Apple basics for gardeners", "Élan basics for beginners", "Zebra care essentials"],
+      [
+        "Docs topic bumped most recently",
+        "Wiki topic bumped in the middle",
+        "Docs topic bumped a while back",
+        "Wiki topic bumped longest ago",
+        "Wiki topic already inside Docs",
+      ],
     )
   end
 
-  it "excludes topics that are already in the target category" do
+  it "shows the source category on the topics it pulled in" do
     visit target_category_path
 
-    expect(page).to have_css(".wiki-tag-list")
-    expect(listed_titles).not_to include("Already inside the Docs category")
+    expect(page).to have_css(".topic-list-item.wiki-tag-topic .badge-category", text: "Guides")
   end
 
-  it "excludes topics without the tag" do
+  it "does not duplicate a tagged topic that already lives in the category" do
     visit target_category_path
 
-    expect(page).to have_css(".wiki-tag-list")
-    expect(listed_titles).not_to include("Not tagged at all anywhere")
+    expect(page).to have_css(".topic-list-item")
+    expect(listed_titles.count("Wiki topic already inside Docs")).to eq(1)
   end
 
-  it "renders one heading and a single list" do
+  it "leaves untagged topics from other categories out" do
     visit target_category_path
 
-    expect(page).to have_css(".wiki-tag-list__heading", count: 1)
-    expect(page).to have_css(".wiki-tag-list__items", count: 1)
+    expect(page).to have_css(".topic-list-item.wiki-tag-topic")
+    expect(listed_titles).not_to include("Untagged topic somewhere else")
   end
 
-  it "does not render on other discovery pages" do
-    visit "/latest"
-    expect(page).to have_css(".topic-list")
-    expect(page).to have_no_css(".wiki-tag-list")
-
-    visit "/categories"
-    expect(page).to have_css(".category-list, .categories-list")
-    expect(page).to have_no_css(".wiki-tag-list")
-
+  it "does not touch other discovery pages" do
     visit "/c/#{other_category.slug}/#{other_category.id}"
-    expect(page).to have_css(".topic-list")
-    expect(page).to have_no_css(".wiki-tag-list")
+    expect(page).to have_css(".topic-list-item")
+    expect(page).to have_no_css(".topic-list-item.wiki-tag-topic")
+    expect(listed_titles).not_to include("Docs topic bumped most recently")
+
+    visit "/latest"
+    expect(page).to have_css(".topic-list-item")
+    expect(page).to have_no_css(".topic-list-item.wiki-tag-topic")
   end
 
-  it "does not render when no target category is set" do
+  it "does nothing when no target category is set" do
     component.update_setting(:target_category, "")
     component.save!
 
     visit target_category_path
 
-    expect(page).to have_css(".topic-list")
-    expect(page).to have_no_css(".wiki-tag-list")
+    expect(page).to have_css(".topic-list-item")
+    expect(page).to have_no_css(".topic-list-item.wiki-tag-topic")
+    expect(listed_titles).not_to include("Wiki topic bumped in the middle")
   end
 end

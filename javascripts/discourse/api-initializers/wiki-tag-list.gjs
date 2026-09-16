@@ -1,105 +1,120 @@
 import Component from "@glimmer/component";
-import { tracked } from "@glimmer/tracking";
-import { ajax } from "discourse/lib/ajax";
+import { service } from "@ember/service";
 import { apiInitializer } from "discourse/lib/api";
-import getURL from "discourse/lib/get-url";
-import Category from "discourse/models/category";
-import dCategoryBadge from "discourse/ui-kit/helpers/d-category-badge";
-import I18n from "discourse-i18n";
 
-// Runaway guard: 20 pages x 30 topics covers far more than the expected 200.
+// Runaway guard. 20 pages x 30 topics is far more than the expected volume.
 const MAX_PAGES = 20;
 
-// Per-tag promise, kept for the session so Latest/Top tab switches reuse it.
+// Cached per tag and filter, so switching between the category's tabs and
+// navigating away and back does not refetch during the session.
 const cache = new Map();
+
+// Ids of the topics this component pulled in, used to mark their rows.
+const injectedIds = new Set();
 
 const firstValue = (value) => (value || "").split("|").find(Boolean);
 
-// Same .json postfixing core does in models/topic-list.js loadMore.
-function jsonUrl(moreTopicsUrl) {
-  const [path, query] = moreTopicsUrl.split("?");
-  const url = path.endsWith(".json") ? path : `${path}.json`;
-  return query ? `${url}?${query}` : url;
-}
+async function fetchTagged(store, tag, filter) {
+  // Same filter string core's tag route uses, so this goes through the
+  // normal topic-list adapter and yields real Topic records.
+  const list = await store.findFiltered("topicList", {
+    filter: `tag/${tag}/l/${filter}`,
+  });
 
-async function fetchTagged(tag) {
-  const topics = new Map(); // keyed by id: latest order can shift between pages
-  let url = `/tag/${encodeURIComponent(tag)}/l/latest.json`;
-
-  for (let page = 0; url && page < MAX_PAGES; page++) {
-    const { topic_list } = await ajax(url);
-    topic_list.topics.forEach((topic) => topics.set(topic.id, topic));
-    url = topic_list.more_topics_url && jsonUrl(topic_list.more_topics_url);
+  for (let page = 0; page < MAX_PAGES && list.canLoadMore; page++) {
+    await list.loadMore();
   }
 
-  return [...topics.values()];
+  return [...list.topics];
 }
 
-function loadTagged(tag) {
-  if (!cache.has(tag)) {
-    const promise = fetchTagged(tag).catch((error) => {
-      cache.delete(tag); // let the next visit retry
+function loadTagged(store, tag, filter) {
+  const key = `${tag}|${filter}`;
+
+  if (!cache.has(key)) {
+    const promise = fetchTagged(store, tag, filter).catch((error) => {
+      cache.delete(key); // let the next visit retry
       throw error;
     });
-    cache.set(tag, promise);
+    cache.set(key, promise);
   }
-  return cache.get(tag);
+
+  return cache.get(key);
 }
 
-// An empty array after filtering renders nothing, same as a failure.
-const isLoading = (topics) => topics === null;
+// Pinned topics belonging to the category keep their place at the top. An
+// injected topic pinned in its own category is not pinned to this one.
+const pinRank = (topic) => (topic.pinned && !injectedIds.has(topic.id) ? 0 : 1);
 
-class WikiTagList extends Component {
-  @tracked topics = null; // null while loading
-  @tracked failed = false;
+function sortKey(topic, filter) {
+  if (filter === "top") {
+    return topic.views ?? 0;
+  }
+  return Date.parse(topic.bumped_at ?? topic.created_at) || 0;
+}
+
+function sortTopics(topics, filter) {
+  return [...topics].sort(
+    (a, b) => pinRank(a) - pinRank(b) || sortKey(b, filter) - sortKey(a, filter)
+  );
+}
+
+// Renders nothing. It exists to reach the topic list through the outlet's
+// model, which is a public API, rather than overriding the category routes.
+class WikiTagInjector extends Component {
+  @service store;
 
   constructor() {
     super(...arguments);
-
-    const locale = I18n.currentBcp47Locale;
-
-    loadTagged(this.args.tag)
-      .then((topics) => {
-        this.topics = topics
-          .filter((topic) => topic.category_id !== this.args.categoryId)
-          .sort((a, b) =>
-            a.title.localeCompare(b.title, locale, { sensitivity: "base" })
-          )
-          .map((topic) => ({
-            id: topic.id,
-            title: topic.title,
-            url: getURL(`/t/${topic.slug}/${topic.id}`),
-            category: Category.findById(topic.category_id),
-          }));
-      })
-      .catch(() => (this.failed = true));
+    this.injectTopics();
   }
 
-  <template>
-    {{#unless this.failed}}
-      {{#if this.topics}}
-        <section class="wiki-tag-list" aria-labelledby="wiki-tag-list-heading">
-          <h2 id="wiki-tag-list-heading" class="wiki-tag-list__heading">
-            {{@heading}}
-          </h2>
-          <ul class="wiki-tag-list__items">
-            {{#each this.topics key="id" as |topic|}}
-              <li class="wiki-tag-list__item">
-                <a class="wiki-tag-list__title" href={{topic.url}}>
-                  {{topic.title}}
-                </a>
-                {{#if topic.category}}
-                  {{dCategoryBadge topic.category}}
-                {{/if}}
-              </li>
-            {{/each}}
-          </ul>
-        </section>
-      {{else if (isLoading this.topics)}}
-        <div class="wiki-tag-list__skeleton" aria-hidden="true"></div>
-      {{/if}}
-    {{/unless}}
-  </template>
+  async injectTopics() {
+    const list = this.args.model?.list;
+
+    // A list is reused when returning to a cached page; only merge once.
+    if (!list || list.wikiTagListMerged) {
+      return;
+    }
+    list.wikiTagListMerged = true;
+
+    const filter = this.args.model.filterType || "latest";
+
+    let tagged;
+    try {
+      tagged = await loadTagged(this.store, this.args.tag, filter);
+    } catch {
+      return; // leave the native list exactly as it was
+    }
+
+    const present = new Set(list.topics.map((topic) => topic.id));
+    const extra = tagged.filter(
+      (topic) =>
+        topic.category_id !== this.args.categoryId && !present.has(topic.id)
+    );
+
+    if (extra.length === 0) {
+      return;
+    }
+
+    extra.forEach((topic) => injectedIds.add(topic.id));
+
+    // Core hides the category badge when every topic shares the category,
+    // which is no longer true once topics from elsewhere are mixed in.
+    list.set("hideCategory", false);
+    list.topics = sortTopics([...list.topics, ...extra], filter);
+
+    // Infinite scroll appends the next page of the category's own topics to
+    // the end, so the merged order has to be restored after each page.
+    const loadMore = list.loadMore.bind(list);
+    list.loadMore = async (...args) => {
+      const result = await loadMore(...args);
+      list.topics = sortTopics(list.topics, filter);
+      return result;
+    };
+  }
+
+  <template></template>
 }
 
 export default apiInitializer((api) => {
@@ -110,25 +125,34 @@ export default apiInitializer((api) => {
     return;
   }
 
-  // The outlet fires on every discovery page (/latest, /categories, every
-  // category, tag+category intersections), so render only on the target
-  // category itself. Reactive: navigating away tears the list down.
+  // The outlet fires on every discovery page, so merge only on the target
+  // category. Tag/category intersection pages are left alone.
   const isTarget = (outletArgs) =>
     !outletArgs.tag && outletArgs.category?.id === categoryId;
 
-  const Connector = <template>
-    {{#if (isTarget @outletArgs)}}
-      <WikiTagList
-        @tag={{tag}}
-        @categoryId={{categoryId}}
-        @heading={{settings.section_heading}}
-      />
-    {{/if}}
-  </template>;
+  api.renderInOutlet(
+    "discovery-above",
+    <template>
+      {{#if (isTarget @outletArgs)}}
+        <WikiTagInjector
+          @model={{@outletArgs.model}}
+          @tag={{tag}}
+          @categoryId={{categoryId}}
+        />
+      {{/if}}
+    </template>
+  );
 
-  if (settings.placement === "below") {
-    api.renderAfterWrapperOutlet("discovery-list-area", Connector);
-  } else {
-    api.renderInOutlet("discovery-list-container-top", Connector);
-  }
+  api.registerValueTransformer(
+    "topic-list-item-class",
+    ({ value, context }) => {
+      if (
+        context.category?.id === categoryId &&
+        injectedIds.has(context.topic.id)
+      ) {
+        value.push("wiki-tag-topic");
+      }
+      return value;
+    }
+  );
 });

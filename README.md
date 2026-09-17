@@ -40,6 +40,14 @@ use it.
   category now holds everything carrying the tag. Only that tag's listing
   routes redirect: tag editing and `/tags/c/...` intersections are left
   alone.
+- A `#<tag>` written into a post body renders nothing, so the tag is applied
+  through the tag selector rather than by hashtag. Other hashtags are
+  untouched, and the word stays in the raw markdown.
+- Disabled rows are hidden in the composer's tag search. When a category
+  restricts which tags it allows, core lists the tags it does not allow as
+  disabled rows explaining why; this hides that explanation. Unlike
+  everything else here, that rule is site-wide, not scoped to the target
+  category.
 - Runs **only** on the target category. The outlet fires on every discovery
   page, so the component checks the current category ID and also skips
   tag/category intersection pages such as `/tags/c/docs/other-tag`.
@@ -74,6 +82,18 @@ location ~ ^/tag/wiki/l/[a-z]+$ { return 301 /c/docs/4; }
 # /tag/wiki/l/latest.json must NOT be redirected.
 ```
 
+### What this deliberately does not do
+
+Two neighbouring problems are better solved in Discourse itself than here:
+
+- **Tags that should be invisible outside a bot's use** (auto-applied
+  glossary terms, say). Put them in a tag group whose only permission entry
+  is that bot's group. `DiscourseTagging.hidden_tags` then hides them
+  server-side from everyone except that group and admins, in lists, topics,
+  search and autocomplete. No stylesheet can match that.
+- **Tags a category does not allow being offered at all.** The rule above
+  only hides core's explanation. What is offered is decided server-side.
+
 ### Known limits
 
 - The **Top** tab is approximate. The tag list is fetched with the `top`
@@ -84,6 +104,9 @@ location ~ ^/tag/wiki/l/[a-z]+$ { return 301 /c/docs/4; }
   finishes, which visibly reflows the list on a slow connection.
 - Everything carrying the tag is fetched up front, up to 20 pages, while the
   category's own topics keep paginating on scroll.
+- The hidden disabled rows in the tag chooser are not covered by a test:
+  exercising them needs a category with restricted tag groups driven through
+  the composer. The hashtag rule is tested.
 
 ## Development
 

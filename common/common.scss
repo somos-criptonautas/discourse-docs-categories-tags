@@ -4,3 +4,18 @@
 .docs-categories-tags-list .discourse-tag[data-tag-name="#{$tag-name}"] {
   display: none;
 }
+
+// The tag is meant to be applied through the tag selector, so a #<tag>
+// written into a post body renders nothing. Other hashtags are untouched.
+a.hashtag-cooked[data-type="tag"][data-slug="#{$tag-name}"] {
+  display: none;
+}
+
+// When a category restricts which tags it allows, core appends the tags it
+// does not allow to the composer's tag search as disabled rows carrying a
+// "not allowed in this category" explanation. Tag choosers only, but this
+// one is site-wide rather than scoped to the target category.
+.mini-tag-chooser .select-kit-row.disabled,
+.tag-chooser .select-kit-row.disabled {
+  display: none;
+}

@@ -4,6 +4,7 @@ RSpec.describe "discourse-docs-categories-tags" do
   let!(:component) { upload_theme_or_component }
 
   fab!(:wiki_tag) { Fabricate(:tag, name: "wiki") }
+  fab!(:handbook_tag) { Fabricate(:tag, name: "handbook") }
   fab!(:target_category) { Fabricate(:category, name: "Docs") }
   fab!(:other_category) { Fabricate(:category, name: "Guides") }
 
@@ -160,12 +161,21 @@ RSpec.describe "discourse-docs-categories-tags" do
   end
 
   it "leaves other tags alone" do
-    Fabricate(:tag, name: "handbook")
-
     visit "/tag/handbook"
 
     # Discourse canonicalises this to /tag/handbook/<id> on its own; what
     # matters is that it stays on the tag page.
     expect(page).to have_current_path(%r{/tag/handbook}, ignore_query: true)
+  end
+
+  it "renders no hashtag for the tag, and leaves other hashtags alone" do
+    Fabricate(:post, topic: docs_recent, raw: "See #wiki and #handbook here")
+
+    visit "/t/#{docs_recent.slug}/#{docs_recent.id}"
+
+    # The control proves hashtags cook at all, so the assertion below cannot
+    # pass just because nothing rendered.
+    expect(page).to have_css("a.hashtag-cooked[data-slug='handbook']")
+    expect(page).to have_no_css("a.hashtag-cooked[data-slug='wiki']")
   end
 end

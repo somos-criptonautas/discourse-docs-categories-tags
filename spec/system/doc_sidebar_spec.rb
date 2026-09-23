@@ -23,10 +23,9 @@ RSpec.describe "Docs sidebar for topics listed elsewhere" do
 
   fab!(:index_topic) { Fabricate(:topic_with_op, category: docs_category) }
 
-  let(:sidebar) { PageObjects::Components::NavigationMenu::Sidebar.new }
-
   before do
-    set_navigation_menu("sidebar")
+    # Core's set_navigation_menu helper is not loaded for theme specs.
+    SiteSetting.navigation_menu = "sidebar"
     SiteSetting.doc_categories_enabled = true
 
     index = DocCategories::Index.create!(category: docs_category, index_topic: index_topic)
@@ -41,18 +40,22 @@ RSpec.describe "Docs sidebar for topics listed elsewhere" do
     Site.clear_cache
   end
 
+  # Raw selectors rather than core's page objects, for the same reason.
+  def docs_link_selector
+    ".sidebar-section-link[href='/t/#{listed_topic.slug}/#{listed_topic.id}']"
+  end
+
   it "shows the docs sidebar on a topic the index links to" do
     visit listed_topic.relative_url
 
-    expect(sidebar).to be_visible
-    expect(sidebar).to have_section_link(listed_topic.title)
-    expect(sidebar).to have_no_section("categories")
+    expect(page).to have_css(docs_link_selector)
+    expect(page).to have_no_css(".sidebar-section[data-section-name='categories']")
   end
 
   it "leaves topics that no index lists alone" do
     visit unlisted_topic.relative_url
 
-    expect(sidebar).to have_section("categories")
-    expect(sidebar).to have_no_section_link(listed_topic.title)
+    expect(page).to have_css(".sidebar-section[data-section-name='categories']")
+    expect(page).to have_no_css(docs_link_selector)
   end
 end

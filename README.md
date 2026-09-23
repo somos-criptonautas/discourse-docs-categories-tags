@@ -82,6 +82,30 @@ location ~ ^/tag/wiki/l/[a-z]+$ { return 301 /c/docs/4; }
 # /tag/wiki/l/latest.json must NOT be redirected.
 ```
 
+### Doc Categories sidebar for topics listed elsewhere
+
+Doc Categories decides its sidebar from the category a topic lives in
+(`doc-category-sidebar.js`, `activeCategory`), so a topic that a Docs Index
+Topic links to but which is filed in another category gets no sidebar, even
+though it is part of the docs. This component overrides that one getter so
+membership follows the index: whichever category's index links to the topic
+drives the sidebar. Topics in a doc category are untouched.
+
+This is tag-independent on purpose - it keys on the index, not on
+`tag_name` - so it also covers doc topics that have nothing to do with the
+merge above.
+
+Two caveats:
+
+- It overrides a getter on a third-party plugin's service, which is private
+  API. If Doc Categories renames it, the sidebar silently goes back to its
+  default; nothing else breaks. When the plugin is not installed at all, the
+  modification is deferred and the component stays inert.
+- Prev/next navigation is a separate matter and lives in
+  `discourse-course-progress`, which resolves membership the same way. The
+  href-parsing helper is therefore duplicated in both repositories; it is
+  unit-tested there.
+
 ### What this deliberately does not do
 
 Two neighbouring problems are better solved in Discourse itself than here:
@@ -104,6 +128,9 @@ Two neighbouring problems are better solved in Discourse itself than here:
   finishes, which visibly reflows the list on a slow connection.
 - Everything carrying the tag is fetched up front, up to 20 pages, while the
   category's own topics keep paginating on scroll.
+- The docs sidebar override is not covered by a test: the theme CI runs core
+  only, so the Doc Categories plugin is not installed and the modification
+  never applies there. The existing suite only proves it does not break boot.
 - The hidden disabled rows in the tag chooser are not covered by a test:
   exercising them needs a category with restricted tag groups driven through
   the composer. The hashtag rule is tested.

@@ -95,12 +95,19 @@ This is tag-independent on purpose - it keys on the index, not on
 `tag_name` - so it also covers doc topics that have nothing to do with the
 merge above.
 
+The patch is applied to the service **instance**, not through
+`api.modifyClass`. Doc Categories looks that service up on the first line of
+its own initializer, so by the time theme code runs it is already in the
+container cache, and `modifyClass` refuses to touch anything initialized
+earlier in boot - it logs "Attempted to modify ... but it was already
+initialized earlier in the boot process" and silently does nothing.
+
 Two caveats:
 
-- It overrides a getter on a third-party plugin's service, which is private
+- It shadows a getter on a third-party plugin's service, which is private
   API. If Doc Categories renames it, the sidebar silently goes back to its
-  default; nothing else breaks. When the plugin is not installed at all, the
-  modification is deferred and the component stays inert.
+  default; nothing else breaks. When the plugin is not installed, the lookup
+  finds nothing and the component stays inert.
 - Prev/next navigation is a separate matter and lives in
   `discourse-course-progress`, which resolves membership the same way. The
   href-parsing helper is therefore duplicated in both repositories; it is

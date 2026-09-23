@@ -1,5 +1,4 @@
 import { apiInitializer } from "discourse/lib/api";
-import Category from "discourse/models/category";
 
 // Doc index links carry only `text` and `href` (no topic id), so membership
 // is resolved by parsing the topic id out of each href.
@@ -39,48 +38,87 @@ function hasDocIndex(category) {
   return false;
 }
 
-// On topic routes the route's model is the topic itself; the post stream is
-// what distinguishes it from a discovery model that also has an id.
-function currentTopic(router) {
+function currentTopic(router, container) {
+  const name = router.currentRouteName;
+
+  if (name !== "topic" && !name?.startsWith("topic.")) {
+    return null;
+  }
+
   const route = router.currentRoute;
   const attributes = route?.attributes ?? route?.parent?.attributes;
 
-  return attributes?.postStream ? attributes : null;
+  return attributes?.id
+    ? attributes
+    : (container.lookup("controller:topic")?.model ?? null);
+}
+
+// Walks up to the prototype that actually defines the accessor.
+function inheritedDescriptor(object, name) {
+  let current = Object.getPrototypeOf(object);
+
+  while (current) {
+    const descriptor = Object.getOwnPropertyDescriptor(current, name);
+
+    if (descriptor) {
+      return descriptor;
+    }
+
+    current = Object.getPrototypeOf(current);
+  }
 }
 
 export default apiInitializer((api) => {
-  // Doc Categories decides the sidebar from the category the topic lives in,
-  // so a topic listed in an Index Topic but filed elsewhere gets no sidebar.
-  // Membership follows the index instead: whichever category's index links to
-  // this topic drives it. Topics in a doc category are left untouched.
+  // Doc Categories decides its sidebar from the category a topic lives in, so
+  // a topic listed in an Index Topic but filed elsewhere gets none. Membership
+  // follows the index instead: whichever category's index links to this topic
+  // drives the sidebar. Topics in a doc category are left untouched.
   //
-  // When the plugin is absent this modification is simply deferred forever,
-  // so the component stays inert rather than erroring.
-  api.modifyClass(
-    "service:doc-category-sidebar",
-    (Superclass) =>
-      class extends Superclass {
-        get activeCategory() {
-          const fromRoute = super.activeCategory;
+  // This patches the service instance rather than the class: the plugin looks
+  // the service up in the first line of its own initializer, so by the time
+  // theme code runs it sits in the container cache, and api.modifyClass
+  // refuses to touch anything already initialized ("Attempted to modify ...
+  // but it was already initialized earlier in the boot process").
+  let sidebar;
 
-          if (hasDocIndex(fromRoute)) {
-            return fromRoute;
-          }
+  try {
+    sidebar = api.container.lookup("service:doc-category-sidebar");
+  } catch {
+    return; // plugin not installed
+  }
 
-          const topic = currentTopic(this.router);
+  const original = inheritedDescriptor(sidebar ?? {}, "activeCategory")?.get;
 
-          if (!topic) {
-            return fromRoute;
-          }
+  if (!original) {
+    return; // plugin gone, or its shape changed: leave the sidebar alone
+  }
 
-          // Category.list() holds what the site has loaded; with lazily
-          // loaded categories a miss just leaves the plugin's own answer.
-          return (
-            Category.list()?.find((category) =>
-              indexLinksTopic(category, topic.id)
-            ) ?? fromRoute
-          );
-        }
+  const site = api.container.lookup("service:site");
+
+  Object.defineProperty(sidebar, "activeCategory", {
+    configurable: true,
+    get() {
+      const fromRoute = original.call(this);
+
+      if (hasDocIndex(fromRoute)) {
+        return fromRoute;
       }
-  );
+
+      const topic = currentTopic(this.router, api.container);
+
+      if (!topic) {
+        return fromRoute;
+      }
+
+      return (
+        site.categories?.find((category) =>
+          indexLinksTopic(category, topic.id)
+        ) ?? fromRoute
+      );
+    },
+  });
+
+  // The service already judged the current route during boot, before this
+  // getter existed, so ask it to look again for a full page load on a topic.
+  sidebar.currentRouteChanged({ isAborted: false });
 });

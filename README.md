@@ -105,9 +105,14 @@ initialized earlier in the boot process" and silently does nothing.
 Two caveats:
 
 - It shadows a getter on a third-party plugin's service, which is private
-  API. If Doc Categories renames it, the sidebar silently goes back to its
-  default; nothing else breaks. When the plugin is not installed, the lookup
-  finds nothing and the component stays inert.
+  API. Three things guard that coupling: `spec/system/doc_sidebar_spec.rb`
+  runs against the real plugin (CI installs it through
+  `tests.requiredPlugins` in `about.json`), the component logs a warning
+  naming itself if the plugin is installed but the getter has gone, and CI
+  also runs weekly so upstream changes surface without a push. If the getter
+  disappears the sidebar reverts to the plugin's default; nothing else
+  breaks. When the plugin is absent the lookup finds nothing and the
+  component stays inert.
 - Prev/next navigation is a separate matter and lives in
   `discourse-course-progress`, which resolves membership the same way. The
   href-parsing helper is therefore duplicated in both repositories; it is
@@ -135,9 +140,7 @@ Two neighbouring problems are better solved in Discourse itself than here:
   finishes, which visibly reflows the list on a slow connection.
 - Everything carrying the tag is fetched up front, up to 20 pages, while the
   category's own topics keep paginating on scroll.
-- The docs sidebar override is not covered by a test: the theme CI runs core
-  only, so the Doc Categories plugin is not installed and the modification
-  never applies there. The existing suite only proves it does not break boot.
+- The tag chooser rule below is the only untested behavior left.
 - The hidden disabled rows in the tag chooser are not covered by a test:
   exercising them needs a category with restricted tag groups driven through
   the composer. The hashtag rule is tested.

@@ -5,6 +5,11 @@ on:
     branches:
       - main
   pull_request:
+  # The docs sidebar patch depends on internals of discourse-doc-categories,
+  # which CI installs from its main branch. A weekly run surfaces upstream
+  # changes that would otherwise only show up on the next push.
+  schedule:
+    - cron: "0 5 * * 1"
 
 jobs:
   ci:

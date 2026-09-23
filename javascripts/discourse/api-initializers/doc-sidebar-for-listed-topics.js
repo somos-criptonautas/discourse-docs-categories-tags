@@ -87,10 +87,22 @@ export default apiInitializer((api) => {
     return; // plugin not installed
   }
 
-  const original = inheritedDescriptor(sidebar ?? {}, "activeCategory")?.get;
+  if (!sidebar) {
+    return; // plugin not installed
+  }
+
+  const original = inheritedDescriptor(sidebar, "activeCategory")?.get;
 
   if (!original) {
-    return; // plugin gone, or its shape changed: leave the sidebar alone
+    // The plugin is installed but no longer looks the way this patch expects.
+    // Say so: the previous version of this failed silently for days.
+    // eslint-disable-next-line no-console
+    console.warn(
+      "discourse-docs-categories-tags: doc-category-sidebar has no " +
+        "activeCategory getter, so topics listed in an index but filed " +
+        "elsewhere will not get the docs sidebar."
+    );
+    return;
   }
 
   const site = api.container.lookup("service:site");

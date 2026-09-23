@@ -8,5 +8,10 @@
   "minimum_discourse_version": "2026.7.2",
   "maximum_discourse_version": null,
   "assets": {},
-  "modifiers": {}
+  "modifiers": {},
+  "tests": {
+    "requiredPlugins": [
+      "https://github.com/discourse/discourse-doc-categories.git"
+    ]
+  }
 }

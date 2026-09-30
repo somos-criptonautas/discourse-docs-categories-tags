@@ -1,5 +1,7 @@
 # discourse-docs-categories-tags
 
+**ENGLISH** | [ESPAÑOL](README.es.md)
+
 Mixes every topic carrying a given tag (default: `wiki`) into the topic list
 of one specific category, so they appear as ordinary rows alongside the
 topics that natively belong to that category.
@@ -165,3 +167,9 @@ discourse_theme rspec .
 ```
 
 Verified against Discourse `2026.7.2` (stable) and `2026.9.0-latest`.
+
+## License
+
+GPL-3.0. See [LICENSE](LICENSE).
+
+Text of this README under [CC BY-NC-SA 4.0](CC-BY-NC-SA-4.0.txt).

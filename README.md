@@ -170,6 +170,6 @@ Verified against Discourse `2026.7.2` (stable) and `2026.9.0-latest`.
 
 ## License
 
-GPL-3.0. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
 
 Text of this README under [CC BY-NC-SA 4.0](CC-BY-NC-SA-4.0.txt).

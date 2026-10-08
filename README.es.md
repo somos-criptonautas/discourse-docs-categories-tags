@@ -166,6 +166,6 @@ Verificado con Discourse `2026.7.2` (estable) y `2026.9.0-latest`.
 
 ## Licencia
 
-GPL-3.0. Consulta [LICENSE](LICENSE).
+MIT. Consulta [LICENSE](LICENSE).
 
 Texto de este README bajo [CC BY-NC-SA 4.0](CC-BY-NC-SA-4.0.txt).

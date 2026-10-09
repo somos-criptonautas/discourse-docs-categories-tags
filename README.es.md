@@ -2,6 +2,8 @@
 
 [ENGLISH](README.md) | **ESPAÑOL**
 
+Mantenido por Criptonautas. Sin afiliación ni respaldo de Discourse (Civilized Discourse Construction Kit, Inc.).
+
 Mezcla todos los temas que llevan una etiqueta dada (por defecto: `wiki`) en la lista de temas
 de una categoría concreta, de modo que aparecen como filas normales junto a los
 temas que pertenecen nativamente a esa categoría.

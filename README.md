@@ -2,6 +2,8 @@
 
 **ENGLISH** | [ESPAÑOL](README.es.md)
 
+Maintained by Criptonautas. Not affiliated with or endorsed by Discourse (Civilized Discourse Construction Kit, Inc.).
+
 Mixes every topic carrying a given tag (default: `wiki`) into the topic list
 of one specific category, so they appear as ordinary rows alongside the
 topics that natively belong to that category.
